@@ -1,0 +1,315 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Tic-Tac-App — Modern UI + Scoreboard</title>
+
+  <!--  GOOGLE FONT  -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+
+  <style>
+    :root{
+      --clr-primary:#6366f1;
+      --clr-primary-hover:#4f46e5;
+      --clr-bg:#f9fafb;
+      --clr-surface:rgba(255,255,255,.9);
+      --cell:clamp(80px,24vw,120px);
+      --radius:16px;
+      --shadow:0 10px 25px -10px rgba(0,0,0,.25);
+    }
+    *,*:before,*:after{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      min-height:100vh;display:flex;align-items:center;justify-content:center;
+      background:radial-gradient(circle at 80% 0%,#eef2ff,#e0e7ff 60%,#fff);
+      color:#1f2937;
+    }
+
+    /* ----------  CARD  ---------- */
+    .app{
+      background:var(--clr-surface);
+      backdrop-filter:blur(12px);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:2rem 2.5rem;
+      width:min(100%,460px);
+      text-align:center;
+    }
+    h1{font-size:1.75rem;font-weight:600;color:var(--clr-primary-hover);margin-bottom:1.35rem}
+
+    /* ----------  BOARD  ---------- */
+    #game{
+      display:grid;
+      grid-template-columns:repeat(3,var(--cell));
+      gap:12px;justify-content:center;
+    }
+    .cell{
+      width:var(--cell);height:var(--cell);
+      background:#fff;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:2.75rem;font-weight:600;color:#334155;
+      cursor:pointer;user-select:none;
+      transition:transform .15s,background .15s;
+    }
+    .cell:hover{background:#eef2ff;transform:translateY(-3px)}
+    .cell.disabled{pointer-events:none;background:#f3f4f6;color:#64748b}
+    .cell.win{background:#bbf7d0!important;color:#065f46;animation:pulse .6s ease-in-out infinite alternate}
+    @keyframes pulse{to{transform:scale(1.1)}}
+
+    /* ----------  STATUS  ---------- */
+    #info{margin-top:1.4rem;font-weight:600;min-height:1.5em}
+
+    /* ----------  BUTTONS & TOGGLE  ---------- */
+    .btn-row{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;margin-top:1.6rem}
+    button,.toggle label{
+      appearance:none;border:none;border-radius:8px;cursor:pointer;
+      padding:.65rem 1.2rem;font-size:1rem;font-weight:600;
+      transition:background .18s,transform .18s;
+    }
+    button{background:var(--clr-primary);color:#fff}
+    button:hover{background:var(--clr-primary-hover);transform:translateY(-2px)}
+
+    /* Toggle (mode) */
+    .toggle input{display:none}
+    .toggle label{
+      background:#e5e7eb;color:#1f2937;display:inline-flex;align-items:center;gap:.5rem;position:relative
+    }
+    .toggle label::before{
+      content:"";width:42px;height:22px;background:#fff;border-radius:999px;box-shadow:inset 0 0 4px rgba(0,0,0,.2)
+    }
+    .toggle label::after{
+      content:"";position:absolute;left:3px;top:2px;width:18px;height:18px;
+      background:var(--clr-primary);border-radius:50%;transition:transform .25s
+    }
+    .toggle input:checked+label{background:#d1d5db}
+    .toggle input:checked+label::after{transform:translateX(20px)}
+
+    /* ----------  SCOREBOARD  ---------- */
+    .scoreboard{margin-top:2.2rem}
+    .scoreboard h2{font-size:1.25rem;margin-bottom:.75rem;font-weight:600;color:#334155}
+    table{width:100%;border-collapse:collapse;font-size:.95rem}
+    th,td{padding:.4rem .2rem;text-align:center}
+    thead tr{background:#f3f4f6;color:#334155;font-weight:600}
+    tbody tr:nth-child(even){background:#f9fafb}
+    tbody tr:nth-child(odd){background:#fff}
+    .totals{margin-top:.6rem;font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Tic-Tac-App</h1>
+
+    <div id="game"></div>
+    <div id="info">Turn: X</div>
+
+    <div class="btn-row">
+      <button id="restart">Restart</button>
+      <!-- Mode toggle -->
+      <div class="toggle">
+        <input type="checkbox" id="modeToggle"/>
+        <label for="modeToggle" id="modeLabel">Human vs AI</label>
+      </div>
+    </div>
+
+    <!-- SCOREBOARD -->
+    <div class="scoreboard">
+      <h2>Scoreboard</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Player</th><th>Wins</th><th>Losses</th><th>Draws</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td id="playerXLabel">Human (X)</td>
+            <td id="playerXWins">0</td>
+            <td id="playerXLosses">0</td>
+            <td id="playerXDraws">0</td>
+          </tr>
+          <tr>
+            <td id="playerOLabel">AI (O)</td>
+            <td id="playerOWins">0</td>
+            <td id="playerOLosses">0</td>
+            <td id="playerODraws">0</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="totals">Matches Played: <span id="matchesPlayed">0</span></div>
+    </div>
+  </div>
+
+  <script>
+    /* ----------  DOM  ---------- */
+    const gameContainer = document.getElementById("game");
+    const info           = document.getElementById("info");
+    const restartBtn     = document.getElementById("restart");
+    const modeToggle     = document.getElementById("modeToggle");
+    const modeLabel      = document.getElementById("modeLabel");
+
+    /* Scoreboard DOM */
+    const playerXLabel   = document.getElementById("playerXLabel");
+    const playerOLabel   = document.getElementById("playerOLabel");
+    const xWinsEl        = document.getElementById("playerXWins");
+    const xLossesEl      = document.getElementById("playerXLosses");
+    const xDrawsEl       = document.getElementById("playerXDraws");
+    const oWinsEl        = document.getElementById("playerOWins");
+    const oLossesEl      = document.getElementById("playerOLosses");
+    const oDrawsEl       = document.getElementById("playerODraws");
+    const matchesEl      = document.getElementById("matchesPlayed");
+
+    /* ----------  STATE  ---------- */
+    let board = Array(9).fill("");
+    let currentPlayer = "X";
+    let gameOver = false;
+    let vsAI = true; // default
+
+    const stats = {
+      playerX:{wins:0,losses:0,draws:0},
+      playerO:{wins:0,losses:0,draws:0},
+      matches:0
+    };
+
+    /* ----------  RENDER BOARD  ---------- */
+    function renderBoard(){
+      gameContainer.innerHTML="";
+      board.forEach((sym,i)=>{
+        const div=document.createElement("div");
+        div.className="cell";
+        div.textContent=sym;
+        if(sym) div.classList.add("disabled");
+        div.addEventListener("click",()=>handleMove(i));
+        gameContainer.appendChild(div);
+      });
+    }
+
+    /* ----------  MOVE LOGIC  ---------- */
+    function handleMove(idx){
+      if(board[idx] || gameOver) return;
+      board[idx]=currentPlayer;
+      checkGameState();
+      if(!gameOver){
+        switchTurn();
+        renderBoard();
+        if(vsAI && currentPlayer==="O"){setTimeout(aiMove,450);}
+      }else{
+        renderBoard(); // to disable remaining cells & add win highlight
+      }
+    }
+    function switchTurn(){
+      currentPlayer = currentPlayer==="X" ? "O":"X";
+      info.textContent="Turn: "+currentPlayer;
+    }
+
+    /* ----------  WIN / DRAW  ---------- */
+    const winCombos=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+    function checkWinner(b,p){return winCombos.find(combo=>combo.every(i=>b[i]===p));}
+
+    function checkGameState(){
+      const winCombo=checkWinner(board,currentPlayer);
+      if(winCombo){
+        info.textContent=`${currentPlayer} Wins 🎉`;
+        highlightWin(winCombo);
+        recordResult(currentPlayer);
+        gameOver=true;
+      }else if(board.every(c=>c)){
+        info.textContent="It's a Draw 🤝";
+        recordResult("draw");
+        gameOver=true;
+      }
+    }
+    function highlightWin(combo){
+      const cells=document.querySelectorAll(".cell");
+      combo.forEach(i=>cells[i].classList.add("win"));
+    }
+
+    /* ----------  SCOREBOARD  ---------- */
+    function recordResult(result){
+      stats.matches++;
+      if(result==="draw"){
+        stats.playerX.draws++; stats.playerO.draws++;
+      }else if(result==="X"){
+        stats.playerX.wins++;  stats.playerO.losses++;
+      }else if(result==="O"){
+        stats.playerO.wins++;  stats.playerX.losses++;
+      }
+      updateScoreboard();
+    }
+    function updateScoreboard(){
+      xWinsEl.textContent   = stats.playerX.wins;
+      xLossesEl.textContent = stats.playerX.losses;
+      xDrawsEl.textContent  = stats.playerX.draws;
+      oWinsEl.textContent   = stats.playerO.wins;
+      oLossesEl.textContent = stats.playerO.losses;
+      oDrawsEl.textContent  = stats.playerO.draws;
+      matchesEl.textContent = stats.matches;
+    }
+
+    /* ----------  AI (MINIMAX)  ---------- */
+    function aiMove(){
+      let bestScore=-Infinity,bestMove;
+      board.forEach((cell,i)=>{
+        if(!cell){
+          board[i]="O";
+          const score=minimax(board,0,false);
+          board[i]="";
+          if(score>bestScore){bestScore=score;bestMove=i;}
+        }
+      });
+      board[bestMove]="O";
+      checkGameState();
+      if(!gameOver){switchTurn();renderBoard();}
+    }
+    function minimax(b,depth,isMax){
+      if(checkWinner(b,"O")) return 1;
+      if(checkWinner(b,"X")) return -1;
+      if(b.every(c=>c)) return 0;
+      if(isMax){
+        let best=-Infinity;
+        b.forEach((cell,i)=>{
+          if(!cell){b[i]="O";best=Math.max(best,minimax(b,depth+1,false));b[i]="";}
+        }); return best;
+      }else{
+        let best=Infinity;
+        b.forEach((cell,i)=>{
+          if(!cell){b[i]="X";best=Math.min(best,minimax(b,depth+1,true));b[i]="";}
+        }); return best;
+      }
+    }
+
+    /* ----------  UTILITIES  ---------- */
+    function resetGame(){
+      board=Array(9).fill("");
+      currentPlayer="X";
+      gameOver=false;
+      info.textContent="Turn: X";
+      renderBoard();
+    }
+    function resetScoreboard(){
+      stats.playerX={wins:0,losses:0,draws:0};
+      stats.playerO={wins:0,losses:0,draws:0};
+      stats.matches=0;
+      updateScoreboard();
+    }
+
+    /* ----------  EVENT LISTENERS  ---------- */
+    restartBtn.addEventListener("click",resetGame);
+    modeToggle.addEventListener("change",()=>{
+      vsAI=modeToggle.checked;
+      modeLabel.textContent=vsAI?"Human vs AI":"Human vs Human";
+      playerXLabel.textContent=vsAI?"Human (X)":"Player X";
+      playerOLabel.textContent=vsAI?"AI (O)":"Player O";
+      resetScoreboard();
+      resetGame();
+    });
+
+    /* ----------  INIT  ---------- */
+    renderBoard();
+    updateScoreboard();
+  </script>
+</body>
+</html>
+```
