@@ -1,0 +1,1 @@
+A web-based interactive game built using HTML, CSS, and JavaScript, allowing players to compete either with another player or against an AI-powered computer opponent. The app features automatic win/draw detection, responsive design, and a restart option, showcasing skills in game logic, DOM manipulation, and basic AI algorithms.
